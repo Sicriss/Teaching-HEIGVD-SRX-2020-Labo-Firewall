@@ -45,6 +45,10 @@ Par la suite, la mise en pratique d’un pare-feu permettra d’approfondir la c
 
 Ce texte se réfère au laboratoire « Pare-feu » à suivre dans le cadre du cours Sécurité des Réseaux, 2020, version 6.2.  Au cours du temps, il a été rédigé, modifié et amélioré par les co-auteurs suivants : Gilles-Etienne Vallat, Alexandre Délez, Olivia Manz, Patrick Mast, Christian Buchs, Sylvain Pasini, Vincent Pezzi, Yohan Martini, Ioana Carlson, Abraham Rubinstein et Frédéric Saam.
 
+
+
+Ce fichier a été modifié pour rendu par le groupe de laboratoire (SRX 2020) composé de Thoeny Laurent et Wojciechowski Cassandre.
+
 ## Echéance 
 
 Ce travail devra être rendu le dimanche après la fin de la 2ème séance de laboratoire, soit au plus tard, **le 31 mars 2020, à 23h.**
@@ -300,6 +304,8 @@ ping 8.8.8.8
 ---
 
 **LIVRABLE : capture d'écran de votre ping vers l'Internet.**
+
+![](./screenshots/firewall3.png)
 
 ---
 
