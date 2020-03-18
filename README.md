@@ -1,3 +1,5 @@
+
+
 # Teaching-HEIGVD-SRX-2020-Laboratoire-Firewall
 
 **ATTENTION : Commencez par créer un Fork de ce repo et travaillez sur votre fork.**
@@ -117,7 +119,6 @@ Pour établir la table de filtrage, voici les **conditions à respecter** dans l
   <li>En suivant la méthodologie vue en classe, établir la table de filtrage avec précision en spécifiant la source et la destination, le type de trafic (TCP/UDP/ICMP/any), les ports sources et destinations ainsi que l'action désirée (**Accept** ou **Drop**, éventuellement **Reject**).
   </li>                                  
 </ol>
-
 _Pour l'autorisation d'accès (**Accept**), il s'agit d'être le plus précis possible lors de la définition de la source et la destination : si l'accès ne concerne qu'une seule machine (ou un groupe), il faut préciser son adresse IP ou son nom (si vous ne pouvez pas encore la déterminer), et non la zone. 
 Appliquer le principe inverse (être le plus large possible) lorsqu'il faut refuser (**Drop**) une connexion._
 
@@ -127,15 +128,24 @@ _Lors de la définition d'une zone, spécifier l'adresse du sous-réseau IP avec
 
 **LIVRABLE : Remplir le tableau**
 
+Nous décrivons ci-dessous les règles que nous établissons pour les requêtes entrantes/sortantes décrites ci-dessus, bien entendu ces règles sont accompagnées de celles permettant de recevoir les réponses correspondantes.
+
 | Adresse IP source | Adresse IP destination | Type | Port src | Port dst | Action |
-| :---:             | :---:                  | :---:| :------: | :------: | :----: |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
-|                   |                        |      |          |          |        |
+| :---------------: | :--------------------: | :--: | :------: | :------: | :----: |
+| 192.168.100.0/24  |     172.17.0.2/32      | TCP  |    *     |    53    | Accept |
+| 192.168.100.0/24  |     172.17.0.2/32      | UDP  |    *     |    53    | Accept |
+| 192.168.100.0/24  |    192.168.200.0/24    | ICMP |    *     |    *     | Accept |
+| 192.168.100.0/24  |     172.17.0.2/32      | ICMP |    *     |    *     | Accept |
+| 192.168.200.0/24  |    192.168.100.0/24    | ICMP |    *     |    *     | Accept |
+| 192.168.100.0/24  |           *            | TCP  |    *     |    80    | Accept |
+| 192.168.100.0/24  |           *            | TCP  |    *     |   8080   | Accept |
+| 192.168.100.0/24  |           *            | TCP  |    *     |   443    | Accept |
+|         *         |    192.168.200.3/32    | TCP  |    *     |    80    | Accept |
+| 192.168.100.3/32  |    192.168.200.3/32    | TCP  |    *     |    22    | Accept |
+| 192.168.100.3/32  |    192.168.100.2/32    | TCP  |    *     |    22    | Accept |
+|         *         |           *            |  *   |    *     |    *     |  DROP  |
+
+_Ci-dessus notre dernière règle "par défaut" sera en pratique représentée sur iptables via une politique._
 
 ---
 
@@ -400,7 +410,13 @@ Commandes iptables :
 ---
 
 ```bash
-LIVRABLE : Commandes iptables
+iptables -A FORWARD -p icmp --icmp-type 8 -s 192.168.100.0/24 -j ACCEPT
+
+iptables -A FORWARD -p icmp --icmp-type 8 -s 192.168.200.0/24 -d 192.168.100.0/24 -j ACCEPT 
+
+iptables -A FORWARD -p icmp --icmp-type 0 -d 192.168.100.0/24 -j ACCEPT
+
+iptables -A FORWARD -p icmp --icmp-type 0 -s 192.168.100.0/24 -d 192.168.200.0/24 -j ACCEPT
 ```
 ---
 
@@ -419,28 +435,30 @@ Faire une capture du ping.
 ---
 **LIVRABLE : capture d'écran de votre ping vers l'Internet.**
 
+![](./screenshots/firewall4.png)
+
 ---
 
 <ol type="a" start="3">
   <li>Testez ensuite toutes les règles, depuis le Client_in_LAN puis depuis le serveur Web (Server_in_DMZ) et remplir le tableau suivant : 
   </li>                                  
 </ol>
+_Note : Nous avons inversé les champs "Serveur DMZ" et "Client LAN" entre les deux tableaux car cela nous semblait faire d'avantage sens que de faire se pinguer soi-même aux machines._
+
+| De Client\_in\_LAN à | OK/KO | Commentaires et explications            |
+| :------------------- | :---: | :-------------------------------------- |
+| Interface DMZ du FW  |  KO   | Pas concerné par la règle "FORWARD"     |
+| Interface LAN du FW  |  KO   | Pas concerné par la règle "FORWARD"     |
+| Serveur DMZ          |  OK   | Comme souhaité.                         |
+| Serveur WAN          |  OK   | Comme configuré, voir capture ci-dessus |
 
 
-| De Client\_in\_LAN à | OK/KO | Commentaires et explications |
-| :---                 | :---: | :---                         |
-| Interface DMZ du FW  |       |                              |
-| Interface LAN du FW  |       |                              |
-| Client LAN           |       |                              |
-| Serveur WAN          |       |                              |
-
-
-| De Server\_in\_DMZ à | OK/KO | Commentaires et explications |
-| :---                 | :---: | :---                         |
-| Interface DMZ du FW  |       |                              |
-| Interface LAN du FW  |       |                              |
-| Serveur DMZ          |       |                              |
-| Serveur WAN          |       |                              |
+| De Server\_in\_DMZ à | OK/KO | Commentaires et explications        |
+| :------------------- | :---: | :---------------------------------- |
+| Interface DMZ du FW  |  KO   | Pas concerné par la règle "FORWARD" |
+| Interface LAN du FW  |  KO   | Pas concerné par la règle "FORWARD" |
+| Client LAN           |  OK   | Comme souhaité.s                    |
+| Serveur WAN          |  KO   | Pas autorisé par nos règles         |
 
 
 ## Règles pour le protocole DNS
@@ -460,6 +478,8 @@ ping www.google.com
 
 **LIVRABLE : capture d'écran de votre ping.**
 
+![](./screenshots/firewall5.png)
+
 ---
 
 * Créer et appliquer la règle adéquate pour que la **condition 1 du cahier des charges** soit respectée.
@@ -470,6 +490,11 @@ Commandes iptables :
 
 ```bash
 LIVRABLE : Commandes iptables
+iptables -A FORWARD -p udp --dport 53 -j ACCEPT -s 192.168.100.0/24
+iptables -A FORWARD -p tcp --dport 53 -j ACCEPT -s 192.168.100.0/24
+
+iptables -A FORWARD -p udp --sport 53 -j ACCEPT -d 192.168.100.0/24
+iptables -A FORWARD -p tcp --sport 53 -j ACCEPT -d 192.168.100.0/24
 ```
 
 ---
@@ -482,6 +507,10 @@ LIVRABLE : Commandes iptables
 
 **LIVRABLE : capture d'écran de votre ping.**
 
+![](./screenshots/firewall6.png)
+
+---
+
 ---
 
 <ol type="a" start="6">
@@ -491,7 +520,9 @@ LIVRABLE : Commandes iptables
 ---
 **Réponse**
 
-**LIVRABLE : Votre réponse ici...**
+**La résolution du nom en adresse IP échouait simplement car les requêtes au serveur de nom étaient droppées par le firewall. D'où le message d'erreur de notre capture d'écran.**
+
+
 
 ---
 
@@ -512,6 +543,13 @@ Commandes iptables :
 
 ```bash
 LIVRABLE : Commandes iptables
+iptables -A FORWARD -p tcp --dport 80 -j ACCEPT -s 192.168.100.0/24
+iptables -A FORWARD -p tcp --dport 8080 -j ACCEPT -s 192.168.100.0/24
+iptables -A FORWARD -p tcp --dport 443 -j ACCEPT -s 192.168.100.0/24
+
+iptables -A FORWARD -p tcp --sport 80 -j ACCEPT -d 192.168.100.0/24
+iptables -A FORWARD -p tcp --sport 8080 -j ACCEPT -d 192.168.100.0/24
+iptables -A FORWARD -p tcp --sport 443 -j ACCEPT -d 192.168.100.0/24
 ```
 
 ---
@@ -524,6 +562,8 @@ Commandes iptables :
 
 ```bash
 LIVRABLE : Commandes iptables
+iptables -A FORWARD -p tcp --dport 80 -j ACCEPT -d 192.168.200.3/32
+iptables -A FORWARD -p tcp --sport 80 -j ACCEPT -s 192.168.200.3/32
 ```
 ---
 
@@ -534,6 +574,10 @@ LIVRABLE : Commandes iptables
 ---
 
 **LIVRABLE : capture d'écran.**
+
+![](./screenshots/firewall7.png)
+
+---
 
 ---
 
@@ -551,6 +595,10 @@ Commandes iptables :
 
 ```bash
 LIVRABLE : Commandes iptables
+iptables -A FORWARD -p tcp --dport 22 -j ACCEPT -d 192.168.200.3/32 -s 192.168.100.3/32
+iptables -A FORWARD -p tcp --sport 22 -j ACCEPT -s 192.168.200.3/32 -d 192.168.100.3/32
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT -s 192.168.100.3/32
+iptables -A OUTPUT -p tcp --sport 22 -j ACCEPT -d 192.168.100.3/32
 ```
 
 ---
@@ -565,6 +613,8 @@ ssh root@192.168.200.3 (password : celui que vous avez configuré)
 
 **LIVRABLE : capture d'écran de votre connexion ssh.**
 
+![](./screenshots/firewall8.png)
+
 ---
 
 <ol type="a" start="9">
@@ -574,7 +624,7 @@ ssh root@192.168.200.3 (password : celui que vous avez configuré)
 ---
 **Réponse**
 
-**LIVRABLE : Votre réponse ici...**
+**En pratique on accèdera majoritairement à distance à nos serveurs, ssh est typiquement utilisé par les administrateurs système pour aller exécuter des commandes sur les serveurs de l'entreprise (configuration, monitoring, ...)**
 
 ---
 
@@ -582,12 +632,10 @@ ssh root@192.168.200.3 (password : celui que vous avez configuré)
   <li>En général, à quoi faut-il particulièrement faire attention lors de l'écriture des règles du pare-feu pour ce type de connexion ? 
   </li>                                  
 </ol>
-
-
 ---
 **Réponse**
 
-**LIVRABLE : Votre réponse ici...**
+**Il faut être très attentif à limiter la source de la connexion, il serait désastreux qu'un serveur critique avec accès SSH soit visible en ligne, bien que la connexion nécessite un mot de passe.**
 
 ---
 
@@ -602,5 +650,7 @@ A présent, vous devriez avoir le matériel nécessaire afin de reproduire la ta
 ---
 
 **LIVRABLE : capture d'écran avec toutes vos règles.**
+
+![](./screenshots/firewall9.png)
 
 ---
